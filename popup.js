@@ -17,6 +17,7 @@ function getDomain(url) {
         return null;
     }
 }
+// new copntent
 
 function shortenDomain(domain) {
     if (!domain) return "";
