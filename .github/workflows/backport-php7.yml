@@ -74,12 +74,21 @@ jobs:
             echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Check for new commits
+        id: diffcheck
+        run: |
+          COUNT=$(git rev-list --count origin/mainphp7..HEAD)
+          echo "Commits ahead of origin/mainphp7: $COUNT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
       - name: Push backport branch
+        if: steps.diffcheck.outputs.count != '0'
         run: |
           git push origin "${{ steps.branch.outputs.branch }}" --force
 
       - name: Create PR to mainphp7
         id: create_pr
+        if: steps.diffcheck.outputs.count != '0'
         uses: actions/github-script@v7
         with:
           script: |
@@ -119,11 +128,19 @@ jobs:
           script: |
             const originalPrNumber = "${{ steps.commits.outputs.pr_number }}";
             const backportPrUrl = "${{ steps.create_pr.outputs.pr_url }}";
+            const branch = "${{ steps.branch.outputs.branch }}";
             const hasConflicts = "${{ steps.cherrypick.outputs.has_conflicts }}" === 'true';
+            const noNewCommits = "${{ steps.diffcheck.outputs.count }}" === '0';
+            const failed = "${{ steps.cherrypick.outputs.failed_shas }}".trim();
 
-            const message = hasConflicts
-              ? `⚠️ Backport PR created for \`mainphp7\`, but some commits had conflicts and need manual review: ${backportPrUrl}`
-              : `✅ Backport PR created for \`mainphp7\`: ${backportPrUrl}`;
+            let message;
+            if (noNewCommits) {
+              message = `❌ Backport to \`mainphp7\` failed: every commit in this PR conflicted and none could be cherry-picked cleanly (${failed.trim()}). No branch was pushed and no PR was opened. Please cherry-pick these commits manually onto \`mainphp7\`.`;
+            } else if (hasConflicts) {
+              message = `⚠️ Backport PR created for \`mainphp7\`, but some commits had conflicts and need manual review: ${backportPrUrl}\n\nBranch: \`${branch}\``;
+            } else {
+              message = `✅ Backport PR created for \`mainphp7\`: ${backportPrUrl}`;
+            }
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
