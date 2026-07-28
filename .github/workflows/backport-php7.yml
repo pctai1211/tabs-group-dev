@@ -1,0 +1,133 @@
+name: Backport to mainphp7
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  backport:
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'backport-php7')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Config git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get commit list from merged PR
+        id: commits
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const commits = await github.paginate(
+              github.rest.pulls.listCommits,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+              }
+            );
+            const shas = commits.map(c => c.sha);
+            core.setOutput('shas', shas.join(' '));
+            core.setOutput('pr_number', pr.number);
+            core.setOutput('pr_title', pr.title);
+
+      - name: Create backport branch from mainphp7
+        id: branch
+        run: |
+          BRANCH="backport/pr-${{ steps.commits.outputs.pr_number }}-to-mainphp7"
+          git fetch origin mainphp7
+          git checkout -b "$BRANCH" origin/mainphp7
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Cherry-pick commits
+        id: cherrypick
+        continue-on-error: true
+        run: |
+          set +e
+          FAILED=""
+          for sha in ${{ steps.commits.outputs.shas }}; do
+            echo "Cherry-picking $sha"
+            git cherry-pick "$sha"
+            if [ $? -ne 0 ]; then
+              echo "Conflict on $sha, aborting this commit"
+              git cherry-pick --abort
+              FAILED="$FAILED $sha"
+            fi
+          done
+          echo "failed_shas=$FAILED" >> "$GITHUB_OUTPUT"
+          if [ -n "$FAILED" ]; then
+            echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push backport branch
+        run: |
+          git push origin "${{ steps.branch.outputs.branch }}" --force
+
+      - name: Create PR to mainphp7
+        id: create_pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = "${{ steps.branch.outputs.branch }}";
+            const prNumber = "${{ steps.commits.outputs.pr_number }}";
+            const prTitle = "${{ steps.commits.outputs.pr_title }}";
+            const failed = "${{ steps.cherrypick.outputs.failed_shas }}".trim();
+            const hasConflicts = "${{ steps.cherrypick.outputs.has_conflicts }}" === 'true';
+
+            let body = `Automated backport from PR #${prNumber} (\`${prTitle}\`) into \`mainphp7\`.\n\n`;
+            if (hasConflicts) {
+              body += `⚠️ **Some commits had conflicts and need manual resolution:**\n`;
+              failed.split(' ').forEach(sha => {
+                if (sha) body += `- ${sha}\n`;
+              });
+              body += `\nThe non-conflicting commits have already been cherry-picked into this branch. Please pull branch \`${branch}\`, cherry-pick the remaining commits manually, resolve the conflicts, and push again.`;
+            } else {
+              body += `All commits were cherry-picked successfully with no conflicts.`;
+            }
+
+            const newPr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Backport] ${prTitle} -> mainphp7`,
+              head: branch,
+              base: 'mainphp7',
+              body: body,
+              draft: hasConflicts,
+            });
+
+            core.setOutput('pr_url', newPr.data.html_url);
+            core.setOutput('pr_number_new', newPr.data.number);
+
+      - name: Comment back on original PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const originalPrNumber = "${{ steps.commits.outputs.pr_number }}";
+            const backportPrUrl = "${{ steps.create_pr.outputs.pr_url }}";
+            const hasConflicts = "${{ steps.cherrypick.outputs.has_conflicts }}" === 'true';
+
+            const message = hasConflicts
+              ? `⚠️ Backport PR created for \`mainphp7\`, but some commits had conflicts and need manual review: ${backportPrUrl}`
+              : `✅ Backport PR created for \`mainphp7\`: ${backportPrUrl}`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt(originalPrNumber, 10),
+              body: message,
+            });

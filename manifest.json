@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "name": "Tab Grouper by Domain",
+    "version": "1.4",
+    "description": "Tự động nhóm các tab theo domain",
+    "permissions": [
+        "tabs",
+        "tabGroups",
+        "storage",
+        "contextMenus",
+        "notifications"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icon.png",
+            "48": "icon.png",
+            "128": "icon.png"
+        }
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "icons": {
+        "16": "icon.png",
+        "48": "icon.png",
+        "128": "icon.png"
+    }
+}
