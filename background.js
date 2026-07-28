@@ -1,4 +1,4 @@
-// Lưu trạng thái bật/tắt tự động nhóm
+// Lưu trạng thái bật/tắt tự động nhóm php7
 let autoGroupEnabled = true;
 let restorePersistentEnabled = true;
 

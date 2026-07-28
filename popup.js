@@ -1,4 +1,5 @@
-// Hàm lấy domain từ URL
+// Hàm lấy domain từ URL php7
+// php7
 function getDomain(url) {
     try {
         const urlObj = new URL(url);
