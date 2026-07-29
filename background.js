@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // Lưu trạng thái bật/tắt tự động nhóm php7
+=======
+// Lưu trạng thái bật/tắt tự động nhóm main
+>>>>>>> 236af76 (Update comment to clarify auto group state functionality)
 let autoGroupEnabled = true;
 let restorePersistentEnabled = true;
 
