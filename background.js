@@ -2,7 +2,7 @@
 let autoGroupEnabled = true;
 let restorePersistentEnabled = true;
 
-// Hàm lấy domain từ URL php7
+// Hàm lấy domain từ URL php7 no php7
 function getDomain(url) {
     try {
         const urlObj = new URL(url);

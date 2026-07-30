@@ -1,4 +1,5 @@
 // Hàm lấy domain từ URL
+// Hàm backport
 function getDomain(url) {
     try {
         const urlObj = new URL(url);
