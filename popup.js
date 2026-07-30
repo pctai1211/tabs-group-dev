@@ -1,5 +1,5 @@
-// Hàm lấy domain từ URL php7
-// php7dsds
+// Hàm lấy domain từ URL
+// Hàm backport
 function getDomain(url) {
     try {
         const urlObj = new URL(url);
