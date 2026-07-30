@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 // Hàm lấy domain từ URL php7
 // php7dsds
+=======
+// Hàm lấy domain từ URL
+// Hàm backport
+>>>>>>> dfae5c0 (Update comments to clarify domain retrieval functions in background and popup scripts)
 function getDomain(url) {
     try {
         const urlObj = new URL(url);

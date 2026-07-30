@@ -2,7 +2,11 @@
 let autoGroupEnabled = true;
 let restorePersistentEnabled = true;
 
+<<<<<<< HEAD
 // Hàm lấy domain từ URL dsds
+=======
+// Hàm lấy domain từ URL php7 no php7
+>>>>>>> dfae5c0 (Update comments to clarify domain retrieval functions in background and popup scripts)
 function getDomain(url) {
     try {
         const urlObj = new URL(url);
